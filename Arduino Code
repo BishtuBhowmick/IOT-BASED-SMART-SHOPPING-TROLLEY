@@ -1,0 +1,134 @@
+#define SS_PIN 2   //D4
+#define RST_PIN 0  //D3
+#include <SPI.h>
+#include <MFRC522.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+ESP8266WebServer server(80);
+int statuss = 0;
+int out = 0;
+String page = "";
+
+int a;
+int p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+int c1 = 0, c2 = 0, c3 = 0, c4 = 0;
+
+double total = 0;
+int count_prod = 0;
+
+// Define RFID tag values for products and remove tag
+String biscuitTag = "03 7B 12 25";
+String soapTag = "89 68 A1 99";
+String riceTag = "A3 DC 14 25";
+String teaTag = "F3 3F 46 25";
+String removeTag = "Your_Remove_Tag_Here";
+
+void setup() {
+  Serial.begin(9600);
+  SPI.begin();
+  mfrc522.PCD_Init();
+  Wire.begin(D2, D1);
+  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("WELCOME TO SMART");
+  lcd.setCursor(0, 1);
+  lcd.print("SHOPPING TROLLEY");
+
+  delay(3000);
+  lcd.clear();
+  WiFi.begin("Barnik's M12", "Barnik2003");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print("..");
+    delay(200);
+  }
+  Serial.println();
+  Serial.println("NodeMCU is Connected!");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", HTTP_GET, []() {
+    String page = "<html><head><title>E Cart using IoT</title></head>";
+    page += "<style type=\"text/css\">";
+    page += "table{border-collapse: collapse;}th {background-color:  #3498db ;color: white;}table,td {border: 4px solid black;font-size: x-large;";
+    page += "text-align:center;border-style: groove;border-color: rgb(255,0,0);}</style><body><center>";
+    page += "<h1>Smart Shopping Cart using IoT</h1>";
+    page += "<br><br><div id=\"cartContent\">";
+    page += "<script>";
+    page += "function updateContent() {";
+    page += "  var xhttp = new XMLHttpRequest();";
+    page += "  xhttp.onreadystatechange = function() {";
+    page += "    if (this.readyState == 4 && this.status == 200) {";
+    page += "      document.getElementById('cartContent').innerHTML = this.responseText;";
+    page += "    }";
+    page += "  };";
+    page += "  xhttp.open('GET', '/cart', true);";
+    page += "  xhttp.send();";
+    page += "}";
+    page += "setInterval(updateContent, 500); // Update content every 5 seconds";
+    page += "</script>";
+    page += "</div>";
+    page += "<br><a href=\"https://rzp.io/i/z4wqug9\"><input type=\"button\" name=\"Pay Now\" value=\"Pay Now\" style=\"width: 200px;height: 50px\"></a></center></body></html>";
+    server.send(200, "text/html", page);
+});
+
+server.on("/cart", HTTP_GET, []() {
+    String cartContent = "<table style=\"width: 1200px;height: 450px;\"><tr>";
+    cartContent += "<th>ITEMS</th><th>QUANTITY</th><th>COST</th></tr><tr><td>Biscuit</td><td>" + String(p1) + "</td><td>" + String(c1) + "</td></tr>";
+    cartContent += "<tr><td>Soap</td><td>" + String(p2) + "</td><td>" + String(c2) + "</td></tr><tr><td>Rice(1KG)</td><td>" + String(p3) + "</td><td>" + String(c3) + "</td>";
+    cartContent += "</tr><tr><td>Tea(50g)</td><td>" + String(p4) + "</td><td>" + String(c4) + "</td></tr><tr><th>Grand Total</th><th>" + String(count_prod) + "</th><th>" + String(total) + "</th>";
+    cartContent += "</tr></table>";
+    server.send(200, "text/html", cartContent);
+});
+
+
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+  lcd.setCursor(0, 0);
+  lcd.print(" PLZ ADD ITEMS     ");
+  lcd.setCursor(0, 1);
+  lcd.print("    TO CART          ");
+
+  delay(1000);
+
+  if (!mfrc522.PICC_IsNewCardPresent()) {
+    return;
+  }
+  if (!mfrc522.PICC_ReadCardSerial()) {
+    return;
+  }
+
+  String content = "";
+  byte letter;
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
+    content.concat(String(mfrc522.uid.uidByte[i], HEX));
+  }
+  content.toUpperCase();
+
+  // Add logic to detect remove tags
+  if (content.substring(1) == removeTag) {
+    // Add logic to remove a product from the cart
+    // Decrease the quantity and update the total
+    // Update the LCD display and web interface accordingly
+  } else {
+    // Add logic to handle product tags
+    if (content.substring(1) == biscuitTag) {
+      // Add logic for biscuit product
+    } else if (content.substring(1) == soapTag) {
+      // Add logic for soap product
+    } else if (content.substring(1) == riceTag) {
+      // Add logic for rice product
+    } else if (content.substring(1) == teaTag) {
+      // Add logic for tea product
+    }
+  }
+}
